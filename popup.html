@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Work Report</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>Daily Work Report</h1>
+        <p id="dateLabel" class="date-label"></p>
+      </div>
+
+      <nav class="main-tabs" role="tablist" aria-label="Daily report tabs">
+        <button id="tasksTabBtn" class="tab-btn active" type="button" role="tab" aria-selected="true">▣ Tasks</button>
+        <button id="morningBtn" class="tab-btn" type="button" role="tab" aria-selected="false">☀ Morning</button>
+        <button id="eveningBtn" class="tab-btn" type="button" role="tab" aria-selected="false">🌙 Evening</button>
+      </nav>
+    </header>
+
+    <section id="tasksView" class="view active" role="tabpanel">
+      <div class="section-heading">
+        <div>
+          <h2>Tasks</h2>
+          <p>Drag the handle to reorder. Changes are saved automatically.</p>
+        </div>
+        <button id="addTaskBtn" class="primary small" type="button">+ Add task</button>
+      </div>
+
+      <section id="taskList" class="task-list" aria-live="polite"></section>
+    </section>
+
+    <section id="reportView" class="view" role="tabpanel">
+      <div class="section-heading report-heading">
+        <div>
+          <h2 id="reportHeading">Morning message</h2>
+          <p>Slack-ready preview. Task-name links remain clickable when pasted.</p>
+        </div>
+        <button id="copyBtn" class="copy-btn" type="button">Copy message</button>
+      </div>
+
+      <div id="preview" class="message-preview" tabindex="0" aria-label="Message preview"></div>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </main>
+
+  <template id="taskTemplate">
+    <article class="task-card">
+      <span class="drag-handle" draggable="true" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span>
+
+      <label class="field id-field">
+        <span>ID</span>
+        <div class="id-input-wrap">
+          <span>CBOX-</span>
+          <input class="task-id" type="number" min="0" step="1" inputmode="numeric" placeholder="75" />
+        </div>
+      </label>
+
+      <label class="field name-field">
+        <span>Task name</span>
+        <input class="task-name" type="text" placeholder="Task name" />
+      </label>
+
+      <label class="field status-field">
+        <span>Progress</span>
+        <select class="task-status">
+          <option value="未着手">未着手</option>
+          <option value="進行中" selected>進行中</option>
+          <option value="完了">完了</option>
+          <option value="保留">保留</option>
+        </select>
+      </label>
+
+      <label class="field percent-field">
+        <span>%</span>
+        <div class="percent-input-wrap">
+          <input class="task-percent" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="30" />
+          <span>%</span>
+        </div>
+      </label>
+
+      <button class="remove-btn" type="button" title="Remove task" aria-label="Remove task">×</button>
+    </article>
+  </template>
+
+  <script src="popup.js"></script>
+</body>
+</html>
