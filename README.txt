@@ -1,16 +1,12 @@
-Daily Work Report Generator v1.2.0
+Daily Work Report Generator v1.3.0
 
 Private Chrome extension for creating daily Japanese morning/evening Slack reports.
 
-Changes in 1.2.0
-- Much more compact task editor and popup.
-- Removed visible task numbers/counts.
-- Removed auto-generated link display under each task.
-- Removed move-up / move-down buttons.
-- Tasks can be reordered by dragging the ⋮⋮ handle.
-- Task ID field is narrower.
-- Completion % field is narrower.
-- Remove × is on the same row as the task fields.
+Changes in 1.3.0
+- Split the old single % field into Current % and Target %.
+- Percentage input placeholders are intentionally blank.
+- Existing saved % values migrate automatically into Current %.
+- Report lines now use: [進行中] （現状：current％／目標：target％）.
 - Slack task-name hyperlinks remain supported.
 
 Install / update

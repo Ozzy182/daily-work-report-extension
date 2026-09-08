@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'dailyWorkReportState';
 const BACKLOG_BASE = 'https://maruori.backlog.com/view/CBOX-';
-const DEFAULT_TASK = () => ({ id: '', name: '', status: '進行中', percent: '' });
+const DEFAULT_TASK = () => ({ id: '', name: '', status: '進行中', currentPercent: '', targetPercent: '' });
 
 let state = {
   tab: 'tasks',
@@ -47,11 +47,19 @@ function humanDateText() {
 }
 
 function normalizeTask(task = {}) {
+  // Backward compatibility: the old single `percent` value becomes Current %.
+  const legacyPercent = task.percent === null || task.percent === undefined ? '' : String(task.percent);
+
   return {
     id: task.id === null || task.id === undefined ? '' : String(task.id),
     name: task.name || '',
     status: ['未着手', '進行中', '完了', '保留'].includes(task.status) ? task.status : '進行中',
-    percent: task.percent === null || task.percent === undefined ? '' : String(task.percent)
+    currentPercent: task.currentPercent === null || task.currentPercent === undefined
+      ? legacyPercent
+      : String(task.currentPercent),
+    targetPercent: task.targetPercent === null || task.targetPercent === undefined
+      ? ''
+      : String(task.targetPercent)
   };
 }
 
@@ -125,13 +133,15 @@ function renderTasks() {
     const idInput = node.querySelector('.task-id');
     const nameInput = node.querySelector('.task-name');
     const statusSelect = node.querySelector('.task-status');
-    const percentInput = node.querySelector('.task-percent');
+    const currentPercentInput = node.querySelector('.task-current-percent');
+    const targetPercentInput = node.querySelector('.task-target-percent');
     const remove = node.querySelector('.remove-btn');
 
     idInput.value = task.id;
     nameInput.value = task.name;
     statusSelect.value = task.status;
-    percentInput.value = task.percent;
+    currentPercentInput.value = task.currentPercent;
+    targetPercentInput.value = task.targetPercent;
     card.dataset.index = index;
 
     idInput.addEventListener('input', () => {
@@ -151,16 +161,8 @@ function renderTasks() {
       changed();
     });
 
-    percentInput.addEventListener('input', () => {
-      if (percentInput.value === '') {
-        state.tasks[index].percent = '';
-      } else {
-        const value = Math.min(100, Math.max(0, Number(percentInput.value)));
-        percentInput.value = Number.isFinite(value) ? String(value) : '';
-        state.tasks[index].percent = percentInput.value;
-      }
-      changed();
-    });
+    bindPercentInput(currentPercentInput, 'currentPercent', index);
+    bindPercentInput(targetPercentInput, 'targetPercent', index);
 
     remove.addEventListener('click', () => removeTask(index));
 
@@ -231,21 +233,40 @@ function changed() {
   updatePreview();
 }
 
+function bindPercentInput(input, key, index) {
+  input.addEventListener('input', () => {
+    if (input.value === '') {
+      state.tasks[index][key] = '';
+    } else {
+      const value = Math.min(100, Math.max(0, Number(input.value)));
+      input.value = Number.isFinite(value) ? String(value) : '';
+      state.tasks[index][key] = input.value;
+    }
+    changed();
+  });
+}
+
 function progressText(task) {
-  const percent = task.percent === '' ? '' : ` ${task.percent}%`;
-  return `[${task.status}${percent}]`;
+  return `[${task.status}]`;
+}
+
+function percentDetailText(task) {
+  const current = task.currentPercent === '' ? '' : `${task.currentPercent}％`;
+  const target = task.targetPercent === '' ? '' : `${task.targetPercent}％`;
+  return `（現状：${current}／目標：${target}）`;
 }
 
 function formatTaskPlain(task, index) {
   const id = task.id.trim();
   const name = task.name.trim() || (id ? `CBOX-${id}` : '(Untitled task)');
   const progress = progressText(task);
+  const percentDetail = percentDetailText(task);
 
   if (id !== '') {
-    return `${index + 1}. CBOX-${id} : ${name} ${progress}`;
+    return `${index + 1}. CBOX-${id} : ${name} ${progress} ${percentDetail}`;
   }
 
-  return `${index + 1}. ${name} ${progress}`;
+  return `${index + 1}. ${name} ${progress} ${percentDetail}`;
 }
 
 function generatePlainText() {
@@ -311,7 +332,7 @@ function buildPreviewDom() {
       line.append(document.createTextNode(name));
     }
 
-    line.append(document.createTextNode(` ${progressText(task)}`));
+    line.append(document.createTextNode(` ${progressText(task)} ${percentDetailText(task)}`));
     els.preview.appendChild(line);
   });
 
@@ -347,13 +368,14 @@ function generateClipboardHtml() {
     const fallbackName = id ? `CBOX-${id}` : '(Untitled task)';
     const name = escapeHtml(task.name.trim() || fallbackName);
     const progress = escapeHtml(progressText(task));
+    const percentDetail = escapeHtml(percentDetailText(task));
 
     if (id) {
       const url = `${BACKLOG_BASE}${encodeURIComponent(id)}`;
-      return `<div>${index + 1}. CBOX-${escapeHtml(id)} : <a href="${url}">${name}</a> ${progress}</div>`;
+      return `<div>${index + 1}. CBOX-${escapeHtml(id)} : <a href="${url}">${name}</a> ${progress} ${percentDetail}</div>`;
     }
 
-    return `<div>${index + 1}. ${name} ${progress}</div>`;
+    return `<div>${index + 1}. ${name} ${progress} ${percentDetail}</div>`;
   }).join('');
 
   return [
