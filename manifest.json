@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Daily Work Report Generator",
-  "version": "1.3.0",
-  "description": "Generate morning and evening Japanese work reports and copy Slack-ready linked messages.",
-  "permissions": ["storage", "clipboardWrite"],
+  "version": "1.5.2",
+  "description": "Generate Japanese morning/evening work reports with current/target progress and Slack-ready links.",
+  "permissions": [
+    "storage",
+    "clipboardWrite"
+  ],
   "action": {
     "default_title": "Daily Work Report",
     "default_popup": "popup.html"

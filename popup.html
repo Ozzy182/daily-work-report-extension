@@ -68,10 +68,11 @@
       <label class="field status-field">
         <span>Progress</span>
         <select class="task-status">
-          <option value="未着手">未着手</option>
-          <option value="進行中" selected>進行中</option>
-          <option value="完了">完了</option>
-          <option value="保留">保留</option>
+          <option value="未着手">Not Started</option>
+          <option value="進行中" selected>In Progress</option>
+          <option value="保留">On Hold</option>
+          <option value="返答待ち">Response Waiting</option>
+          <option value="完了">Complete</option>
         </select>
       </label>
 
@@ -90,6 +91,8 @@
           <span>%</span>
         </div>
       </label>
+
+      <input class="task-note" type="text" placeholder="Note" aria-label="Task note" />
 
       <button class="remove-btn" type="button" title="Remove task" aria-label="Remove task">×</button>
     </article>
