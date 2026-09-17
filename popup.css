@@ -130,7 +130,7 @@ h2 { font-size: 14px; }
 
 .task-card {
   display: grid;
-  grid-template-columns: 16px 98px minmax(210px, 1fr) 105px 76px 76px 25px;
+  grid-template-columns: 16px 90px minmax(145px, 1fr) 95px 66px 66px 108px 25px;
   grid-template-rows: auto 23px;
   gap: 5px 6px;
   align-items: end;
@@ -214,7 +214,7 @@ input:focus, select:focus, .message-preview:focus {
 .percent-input-wrap > span { padding-left: 2px; }
 
 .task-note {
-  grid-column: 2 / 7;
+  grid-column: 2 / 8;
   grid-row: 2;
   height: 23px;
   padding: 0 7px;
@@ -223,7 +223,7 @@ input:focus, select:focus, .message-preview:focus {
 .task-note::placeholder { color: #a4acba; }
 
 .remove-btn {
-  grid-column: 7;
+  grid-column: 8;
   grid-row: 1;
   align-self: end;
   width: 25px;
@@ -280,3 +280,5 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
   transition: 0.18s ease;
 }
 .toast.show { opacity: 1; transform: translateY(0); }
+
+.task-deadline { font-size: 10px; padding: 0 5px; }

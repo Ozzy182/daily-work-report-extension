@@ -1,6 +1,18 @@
-Daily Work Report Generator v1.5.3
+Daily Work Report Generator v1.5.5
 
 Private Chrome extension for creating daily Japanese morning/evening Slack reports.
+
+Changes in 1.5.5
+- Evening report: deadline dates are no longer shown under 今日の作業.
+- Evening report: deadline dates continue to appear under 次の日の作業.
+- Morning report: deadline behavior is unchanged and deadlines continue to appear when set.
+
+Changes in 1.5.4
+- Adjusted Morning message spacing: the blank line now appears above ■ 本日のタスク instead of below it.
+- Added an optional Deadline date field for each task.
+- When a deadline is set, reports append it as （完了予定日：9月16日） after the progress detail.
+- If no deadline is set, no deadline text is added.
+- Deadline is included consistently in Morning, Evening 今日の作業, and Evening 次の日の作業.
 
 Changes in 1.5.3
 - Added a "Request for more task" checkbox in the Tasks view.

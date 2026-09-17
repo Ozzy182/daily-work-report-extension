@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Daily Work Report Generator",
-  "version": "1.5.3",
+  "version": "1.5.5",
   "description": "Generate Japanese morning/evening work reports with current/target progress and Slack-ready links.",
   "permissions": [
     "storage",
