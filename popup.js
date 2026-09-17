@@ -5,6 +5,7 @@ const DEFAULT_TASK = () => ({ id: '', name: '', status: '進行中', currentPerc
 let state = {
   tab: 'tasks',
   mode: 'morning',
+  requestMoreTasks: false,
   tasks: [DEFAULT_TASK()]
 };
 
@@ -16,6 +17,7 @@ const els = {
   reportView: document.getElementById('reportView'),
   reportHeading: document.getElementById('reportHeading'),
   addTaskBtn: document.getElementById('addTaskBtn'),
+  requestMoreTasks: document.getElementById('requestMoreTasks'),
   taskList: document.getElementById('taskList'),
   taskTemplate: document.getElementById('taskTemplate'),
   preview: document.getElementById('preview'),
@@ -72,6 +74,7 @@ async function loadState() {
 
   if (data && Array.isArray(data.tasks)) {
     state.mode = data.mode === 'evening' ? 'evening' : 'morning';
+    state.requestMoreTasks = Boolean(data.requestMoreTasks);
     state.tasks = data.tasks.map(normalizeTask);
     state.tab = ['tasks', 'morning', 'evening'].includes(data.tab) ? data.tab : 'tasks';
   }
@@ -119,6 +122,7 @@ function renderTabs() {
 }
 
 function renderTasks() {
+  els.requestMoreTasks.checked = state.requestMoreTasks;
   els.taskList.innerHTML = '';
 
   if (state.tasks.length === 0) {
@@ -301,7 +305,7 @@ function generateMorningPlainText() {
     .map((task, index) => formatTaskPlain(task, index, morningPercentDetailText(task)))
     .join('\n');
 
-  return [
+  const lines = [
     'おはようございます。',
     `本日（${date}）の業務を開始いたします。`,
     '',
@@ -309,9 +313,15 @@ function generateMorningPlainText() {
     '■ 本日のタスク',
     '',
     taskLines,
-    '',
-    '本日もよろしくお願いいたします。'
-  ].join('\n');
+    ''
+  ];
+
+  if (state.requestMoreTasks) {
+    lines.push('もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。', '');
+  }
+
+  lines.push('本日もよろしくお願いいたします。');
+  return lines.join('\n');
 }
 
 function generateEveningPlainText() {
@@ -325,7 +335,7 @@ function generateEveningPlainText() {
     .map((task, index) => formatTaskPlain(task, index, eveningTargetDetailText(task)))
     .join('\n');
 
-  return [
+  const lines = [
     'お疲れさまです。',
     `本日（${date}）の業務を終了いたします。`,
     '',
@@ -336,9 +346,19 @@ function generateEveningPlainText() {
     '',
     '■ 次の日の作業',
     nextDayLines,
-    '',
-    '本日もありがとうございました。'
-  ].join('\n');
+    ''
+  ];
+
+  if (state.requestMoreTasks) {
+    lines.push(
+      '本日に現在のタスクがすべて完了する予定です。',
+      'もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。',
+      ''
+    );
+  }
+
+  lines.push('本日もありがとうございました。');
+  return lines.join('\n');
 }
 
 function generatePlainText() {
@@ -395,6 +415,10 @@ function buildMorningPreviewDom() {
     });
 
   appendTextLine(els.preview, '', 'message-spacer');
+  if (state.requestMoreTasks) {
+    appendTextLine(els.preview, 'もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。');
+    appendTextLine(els.preview, '', 'message-spacer');
+  }
   appendTextLine(els.preview, '本日もよろしくお願いいたします。');
 }
 
@@ -422,6 +446,11 @@ function buildEveningPreviewDom() {
     });
 
   appendTextLine(els.preview, '', 'message-spacer');
+  if (state.requestMoreTasks) {
+    appendTextLine(els.preview, '本日に現在のタスクがすべて完了する予定です。');
+    appendTextLine(els.preview, 'もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。');
+    appendTextLine(els.preview, '', 'message-spacer');
+  }
   appendTextLine(els.preview, '本日もありがとうございました。');
 }
 
@@ -465,7 +494,7 @@ function generateMorningClipboardHtml() {
     .map((task, index) => taskClipboardHtml(task, index, morningPercentDetailText(task)))
     .join('');
 
-  return [
+  const html = [
     '<div>',
     '<div>おはようございます。</div>',
     `<div>本日（${escapeHtml(date)}）の業務を開始いたします。</div>`,
@@ -474,10 +503,18 @@ function generateMorningClipboardHtml() {
     '<div>■ 本日のタスク</div>',
     '<div><br></div>',
     taskHtml,
-    '<div><br></div>',
-    '<div>本日もよろしくお願いいたします。</div>',
-    '</div>'
-  ].join('');
+    '<div><br></div>'
+  ];
+
+  if (state.requestMoreTasks) {
+    html.push(
+      '<div>もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。</div>',
+      '<div><br></div>'
+    );
+  }
+
+  html.push('<div>本日もよろしくお願いいたします。</div>', '</div>');
+  return html.join('');
 }
 
 function generateEveningClipboardHtml() {
@@ -491,7 +528,7 @@ function generateEveningClipboardHtml() {
     .map((task, index) => taskClipboardHtml(task, index, eveningTargetDetailText(task)))
     .join('');
 
-  return [
+  const html = [
     '<div>',
     '<div>お疲れさまです。</div>',
     `<div>本日（${escapeHtml(date)}）の業務を終了いたします。</div>`,
@@ -503,10 +540,19 @@ function generateEveningClipboardHtml() {
     '<div><br></div>',
     '<div>■ 次の日の作業</div>',
     nextDayHtml,
-    '<div><br></div>',
-    '<div>本日もありがとうございました。</div>',
-    '</div>'
-  ].join('');
+    '<div><br></div>'
+  ];
+
+  if (state.requestMoreTasks) {
+    html.push(
+      '<div>本日に現在のタスクがすべて完了する予定です。</div>',
+      '<div>もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。</div>',
+      '<div><br></div>'
+    );
+  }
+
+  html.push('<div>本日もありがとうございました。</div>', '</div>');
+  return html.join('');
 }
 
 function generateClipboardHtml() {
@@ -574,6 +620,10 @@ els.tasksTabBtn.addEventListener('click', () => setTab('tasks'));
 els.morningBtn.addEventListener('click', () => setTab('morning'));
 els.eveningBtn.addEventListener('click', () => setTab('evening'));
 els.addTaskBtn.addEventListener('click', addTask);
+els.requestMoreTasks.addEventListener('change', () => {
+  state.requestMoreTasks = els.requestMoreTasks.checked;
+  changed();
+});
 els.copyBtn.addEventListener('click', copyMessage);
 
 loadState();

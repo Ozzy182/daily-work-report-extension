@@ -83,6 +83,31 @@ h2 { font-size: 14px; }
 }
 .primary:hover, .copy-btn:hover { background: var(--accent-dark); }
 .primary.small { padding: 6px 9px; font-size: 11px; }
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.request-more-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.request-more-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
 .copy-btn { padding: 7px 11px; font-size: 11px; }
 
 .task-list {

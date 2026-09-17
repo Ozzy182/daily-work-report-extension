@@ -27,7 +27,13 @@
           <h2>Tasks</h2>
           <p>Drag the handle to reorder. Changes are saved automatically.</p>
         </div>
-        <button id="addTaskBtn" class="primary small" type="button">+ Add task</button>
+        <div class="task-actions">
+          <label class="request-more-toggle">
+            <input id="requestMoreTasks" type="checkbox" />
+            <span>Request for more task</span>
+          </label>
+          <button id="addTaskBtn" class="primary small" type="button">+ Add task</button>
+        </div>
       </div>
 
       <section id="taskList" class="task-list" aria-live="polite"></section>
