@@ -1,40 +1,26 @@
-Daily Work Report Generator v1.5.5
+WUNDOU Work Report Generator v2.1.0
 
-Private Chrome extension for creating daily Japanese morning/evening Slack reports.
+Chrome extension for managing WUNDOU tasks and generating dated Bibek/Nurbu reports.
 
-Changes in 1.5.5
-- Evening report: deadline dates are no longer shown under 今日の作業.
-- Evening report: deadline dates continue to appear under 次の日の作業.
-- Morning report: deadline behavior is unchanged and deadlines continue to appear when set.
+Changes in 2.1.0
+- Removed Start %.
+- Renamed End % to Status %.
+- Existing End % values automatically migrate to Status %.
+- Tasks remain in one unified list with Bibek/Nurbu Assignee selection.
+- Report tab now provides two separate reports:
+  1. Evening report using today's Japan date.
+  2. Next morning report using tomorrow's Japan date.
+- Both reports automatically group tasks into BIBEK and NURBU blocks.
+- The same Status % is used in the evening report and as the next morning's starting status.
+- WUNDOU task names remain linked to Backlog.
+- Private Note remains available in Tasks and is not included in reports.
 
-Changes in 1.5.4
-- Adjusted Morning message spacing: the blank line now appears above ■ 本日のタスク instead of below it.
-- Added an optional Deadline date field for each task.
-- When a deadline is set, reports append it as （完了予定日：9月16日） after the progress detail.
-- If no deadline is set, no deadline text is added.
-- Deadline is included consistently in Morning, Evening 今日の作業, and Evening 次の日の作業.
-
-Changes in 1.5.3
-- Added a "Request for more task" checkbox in the Tasks view.
-- When checked, the morning report adds this before the closing greeting:
-  もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。
-- When checked, the evening report adds these before the closing greeting:
-  本日に現在のタスクがすべて完了する予定です。
-  もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。
-- The checkbox state is saved automatically.
-
-Previous behavior retained
-- Morning report date is the next Japan calendar day (+1 day).
-- Evening report date uses the current Japan date.
-- Morning report: completed tasks are automatically omitted.
-- Morning report: all non-completed tasks are shown once with Current % and Target %.
-- Evening report: every task is shown under 今日の作業 with Current % only.
-- Evening report: non-completed tasks are also shown under 次の日の作業 with Target % only.
-- Tasks with Progress = Complete / 完了 are automatically omitted from 次の日の作業.
-- The same task list is used for both morning and evening; no Today/Next day controls are used.
-- Progress options remain English in the UI while Japanese values are used in generated reports.
-- The compact Note field remains private to the extension and is not included in reports.
-- Slack task-name hyperlinks remain supported.
+Current workflow
+- Backlog project prefix: WUNDOU
+- Backlog URLs: https://maruori.backlog.com/view/WUNDOU-67
+- Tabs: Tasks / Report
+- Task fields: Assignee, WUNDOU ID, Task name, Status %, private Note
+- Report dates are calculated using Asia/Tokyo.
 
 Install / update
 1. Extract this folder somewhere permanent.

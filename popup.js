@@ -1,70 +1,45 @@
 const STORAGE_KEY = 'dailyWorkReportState';
-const BACKLOG_BASE = 'https://maruori.backlog.com/view/CBOX-';
-const DEFAULT_TASK = () => ({ id: '', name: '', status: '進行中', currentPercent: '', targetPercent: '', deadline: '', note: '' });
+const BACKLOG_BASE = 'https://maruori.backlog.com/view/WUNDOU-';
+const ASSIGNEES = ['Bibek', 'Nurbu'];
+
+const DEFAULT_TASK = (assignee = 'Bibek') => ({
+  id: '',
+  name: '',
+  assignee,
+  statusPercent: '',
+  note: ''
+});
 
 let state = {
   tab: 'tasks',
-  mode: 'morning',
-  requestMoreTasks: false,
-  tasks: [DEFAULT_TASK()]
+  tasks: []
 };
 
 const els = {
   tasksTabBtn: document.getElementById('tasksTabBtn'),
-  morningBtn: document.getElementById('morningBtn'),
-  eveningBtn: document.getElementById('eveningBtn'),
+  reportTabBtn: document.getElementById('reportTabBtn'),
   tasksView: document.getElementById('tasksView'),
   reportView: document.getElementById('reportView'),
-  reportHeading: document.getElementById('reportHeading'),
-  addTaskBtn: document.getElementById('addTaskBtn'),
-  requestMoreTasks: document.getElementById('requestMoreTasks'),
   taskList: document.getElementById('taskList'),
+  addTaskBtn: document.getElementById('addTaskBtn'),
   taskTemplate: document.getElementById('taskTemplate'),
-  preview: document.getElementById('preview'),
-  copyBtn: document.getElementById('copyBtn'),
-  dateLabel: document.getElementById('dateLabel'),
+  combinedPreview: document.getElementById('combinedPreview'),
+  copyAllBtn: document.getElementById('copyAllBtn'),
   toast: document.getElementById('toast')
 };
 
-function getJapanDateParts(dayOffset = 0) {
-  const date = new Date(Date.now() + (dayOffset * 24 * 60 * 60 * 1000));
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).formatToParts(date);
-
-  const map = Object.fromEntries(parts.map(part => [part.type, part.value]));
-  return { year: map.year, month: map.month, day: map.day };
-}
-
-function reportDateText(dayOffset = 0) {
-  const { month, day } = getJapanDateParts(dayOffset);
-  return `${month}月${day}日`;
-}
-
-
-function humanDateText() {
-  const { year, month, day } = getJapanDateParts();
-  return `Japan date: ${year}/${month}/${day}`;
-}
-
 function normalizeTask(task = {}) {
-  // Backward compatibility: the old single `percent` value becomes Current %.
-  const legacyPercent = task.percent === null || task.percent === undefined ? '' : String(task.percent);
+  // Migration from earlier versions:
+  // End % -> Status %. If End % is missing, fall back to older Target/Current values.
+  const legacyStatus = task.endPercent ?? task.targetPercent ?? task.currentPercent ?? task.percent ?? '';
 
   return {
     id: task.id === null || task.id === undefined ? '' : String(task.id),
     name: task.name || '',
-    status: ['未着手', '進行中', '保留', '返答待ち', '完了'].includes(task.status) ? task.status : '進行中',
-    currentPercent: task.currentPercent === null || task.currentPercent === undefined
-      ? legacyPercent
-      : String(task.currentPercent),
-    targetPercent: task.targetPercent === null || task.targetPercent === undefined
-      ? ''
-      : String(task.targetPercent),
-    deadline: task.deadline === null || task.deadline === undefined ? '' : String(task.deadline),
+    assignee: ASSIGNEES.includes(task.assignee) ? task.assignee : 'Bibek',
+    statusPercent: task.statusPercent === null || task.statusPercent === undefined
+      ? String(legacyStatus)
+      : String(task.statusPercent),
     note: task.note === null || task.note === undefined ? '' : String(task.note)
   };
 }
@@ -74,12 +49,11 @@ async function loadState() {
   const data = saved[STORAGE_KEY];
 
   if (data && Array.isArray(data.tasks)) {
-    state.mode = data.mode === 'evening' ? 'evening' : 'morning';
-    state.requestMoreTasks = Boolean(data.requestMoreTasks);
     state.tasks = data.tasks.map(normalizeTask);
-    state.tab = ['tasks', 'morning', 'evening'].includes(data.tab) ? data.tab : 'tasks';
+    state.tab = data.tab === 'report' ? 'report' : 'tasks';
   }
 
+  saveState();
   render();
 }
 
@@ -87,49 +61,37 @@ function saveState() {
   chrome.storage.local.set({ [STORAGE_KEY]: state });
 }
 
+function changed({ rerenderTasks = false } = {}) {
+  saveState();
+  if (rerenderTasks) renderTasks();
+  updatePreviews();
+}
+
 function setTab(tab) {
-  if (!['tasks', 'morning', 'evening'].includes(tab)) return;
-
+  if (!['tasks', 'report'].includes(tab)) return;
   state.tab = tab;
-  if (tab === 'morning' || tab === 'evening') {
-    state.mode = tab;
-  }
-
   saveState();
   renderTabs();
-  updatePreview();
+  updatePreviews();
 }
 
 function renderTabs() {
-  const buttons = {
-    tasks: els.tasksTabBtn,
-    morning: els.morningBtn,
-    evening: els.eveningBtn
-  };
-
-  Object.entries(buttons).forEach(([tab, button]) => {
-    const active = state.tab === tab;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-selected', active ? 'true' : 'false');
-  });
-
   const tasksActive = state.tab === 'tasks';
+  els.tasksTabBtn.classList.toggle('active', tasksActive);
+  els.tasksTabBtn.setAttribute('aria-selected', tasksActive ? 'true' : 'false');
+  els.reportTabBtn.classList.toggle('active', !tasksActive);
+  els.reportTabBtn.setAttribute('aria-selected', tasksActive ? 'false' : 'true');
   els.tasksView.classList.toggle('active', tasksActive);
   els.reportView.classList.toggle('active', !tasksActive);
-
-  if (!tasksActive) {
-    els.reportHeading.textContent = state.mode === 'morning' ? 'Morning message' : 'Evening message';
-  }
 }
 
 function renderTasks() {
-  els.requestMoreTasks.checked = state.requestMoreTasks;
   els.taskList.innerHTML = '';
 
   if (state.tasks.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.textContent = 'No tasks yet. Click “+ Add task”.';
+    empty.textContent = 'No tasks yet.';
     els.taskList.appendChild(empty);
     return;
   }
@@ -138,23 +100,24 @@ function renderTasks() {
     const node = els.taskTemplate.content.cloneNode(true);
     const card = node.querySelector('.task-card');
     const dragHandle = node.querySelector('.drag-handle');
+    const assigneeSelect = node.querySelector('.task-assignee');
     const idInput = node.querySelector('.task-id');
     const nameInput = node.querySelector('.task-name');
-    const statusSelect = node.querySelector('.task-status');
-    const currentPercentInput = node.querySelector('.task-current-percent');
-    const targetPercentInput = node.querySelector('.task-target-percent');
-    const deadlineInput = node.querySelector('.task-deadline');
+    const statusPercentInput = node.querySelector('.task-status-percent');
     const noteInput = node.querySelector('.task-note');
     const remove = node.querySelector('.remove-btn');
 
+    card.dataset.index = String(index);
+    assigneeSelect.value = task.assignee;
     idInput.value = task.id;
     nameInput.value = task.name;
-    statusSelect.value = task.status;
-    currentPercentInput.value = task.currentPercent;
-    targetPercentInput.value = task.targetPercent;
-    deadlineInput.value = task.deadline;
+    statusPercentInput.value = task.statusPercent;
     noteInput.value = task.note;
-    card.dataset.index = index;
+
+    assigneeSelect.addEventListener('change', () => {
+      state.tasks[index].assignee = assigneeSelect.value;
+      changed();
+    });
 
     idInput.addEventListener('input', () => {
       const clean = idInput.value.replace(/[^0-9]/g, '');
@@ -168,27 +131,19 @@ function renderTasks() {
       changed();
     });
 
-    statusSelect.addEventListener('change', () => {
-      state.tasks[index].status = statusSelect.value;
-      changed();
-    });
-
-    bindPercentInput(currentPercentInput, 'currentPercent', index);
-    bindPercentInput(targetPercentInput, 'targetPercent', index);
-
-    deadlineInput.addEventListener('change', () => {
-      state.tasks[index].deadline = deadlineInput.value;
-      changed();
-    });
+    bindPercentInput(statusPercentInput, index);
 
     noteInput.addEventListener('input', () => {
       state.tasks[index].note = noteInput.value;
       changed();
     });
 
-    remove.addEventListener('click', () => removeTask(index));
+    remove.addEventListener('click', () => {
+      state.tasks.splice(index, 1);
+      changed({ rerenderTasks: true });
+    });
 
-    dragHandle.addEventListener('dragstart', (event) => {
+    dragHandle.addEventListener('dragstart', event => {
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', String(index));
       card.classList.add('dragging');
@@ -196,41 +151,51 @@ function renderTasks() {
 
     dragHandle.addEventListener('dragend', () => {
       card.classList.remove('dragging');
-      els.taskList.querySelectorAll('.task-card').forEach(el => el.classList.remove('drag-over'));
+      document.querySelectorAll('.task-card').forEach(el => el.classList.remove('drag-over'));
     });
 
-    card.addEventListener('dragover', (event) => {
+    card.addEventListener('dragover', event => {
+      const from = Number(event.dataTransfer.getData('text/plain'));
+      if (!Number.isInteger(from) || !state.tasks[from]) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
       card.classList.add('drag-over');
     });
 
-    card.addEventListener('dragleave', () => {
-      card.classList.remove('drag-over');
-    });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
 
-    card.addEventListener('drop', (event) => {
+    card.addEventListener('drop', event => {
       event.preventDefault();
       card.classList.remove('drag-over');
       const from = Number(event.dataTransfer.getData('text/plain'));
       const to = index;
-      if (!Number.isInteger(from) || from === to || from < 0 || from >= state.tasks.length) return;
+      if (!Number.isInteger(from) || from === to || !state.tasks[from] || !state.tasks[to]) return;
+
       const [moved] = state.tasks.splice(from, 1);
       state.tasks.splice(to, 0, moved);
-      saveState();
-      renderTasks();
-      updatePreview();
+      changed({ rerenderTasks: true });
     });
 
     els.taskList.appendChild(node);
   });
 }
 
+function bindPercentInput(input, index) {
+  input.addEventListener('input', () => {
+    if (input.value === '') {
+      state.tasks[index].statusPercent = '';
+    } else {
+      const value = Math.min(100, Math.max(0, Number(input.value)));
+      input.value = Number.isFinite(value) ? String(value) : '';
+      state.tasks[index].statusPercent = input.value;
+    }
+    changed();
+  });
+}
+
 function addTask() {
-  state.tasks.push(DEFAULT_TASK());
-  saveState();
-  renderTasks();
-  updatePreview();
+  state.tasks.push(DEFAULT_TASK('Bibek'));
+  changed({ rerenderTasks: true });
 
   requestAnimationFrame(() => {
     const cards = els.taskList.querySelectorAll('.task-card');
@@ -242,148 +207,81 @@ function addTask() {
   });
 }
 
-function removeTask(index) {
-  state.tasks.splice(index, 1);
-  saveState();
-  renderTasks();
-  updatePreview();
+function taskDisplayName(task) {
+  const id = task.id.trim();
+  return task.name.trim() || (id ? `WUNDOU-${id}` : '(Untitled task)');
 }
 
-
-function changed() {
-  saveState();
-  updatePreview();
+function percentText(value) {
+  return value === '' ? '' : `${value}%`;
 }
 
-function bindPercentInput(input, key, index) {
-  input.addEventListener('input', () => {
-    if (input.value === '') {
-      state.tasks[index][key] = '';
-    } else {
-      const value = Math.min(100, Math.max(0, Number(input.value)));
-      input.value = Number.isFinite(value) ? String(value) : '';
-      state.tasks[index][key] = input.value;
-    }
-    changed();
+function taskLine(task) {
+  const id = task.id.trim();
+  const prefix = id ? `WUNDOU-${id} ` : '';
+  const percent = percentText(task.statusPercent);
+  return `${prefix}${taskDisplayName(task)}${percent ? ` ${percent}` : ''}`;
+}
+
+function reportTasks(assignee) {
+  return state.tasks.filter(task => task.assignee === assignee);
+}
+
+function japanDateParts(offsetDays = 0) {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(now)
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, part.value])
+  );
+  const shifted = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + offsetDays));
+  return {
+    month: String(shifted.getUTCMonth() + 1).padStart(2, '0'),
+    day: String(shifted.getUTCDate()).padStart(2, '0')
+  };
+}
+
+function reportDateText(offsetDays = 0) {
+  const { month, day } = japanDateParts(offsetDays);
+  return `${month}月${day}日`;
+}
+
+function pushTaskBlocks(lines) {
+  ASSIGNEES.forEach((assignee, assigneeIndex) => {
+    lines.push(`------------------${assignee.toUpperCase()}----------------------`);
+    reportTasks(assignee).forEach(task => lines.push(taskLine(task)));
+    if (assigneeIndex < ASSIGNEES.length - 1) lines.push('');
   });
 }
 
-function progressText(task) {
-  return `[${task.status}]`;
-}
+function generateReportPlainText(type, includeTitle = true) {
+  const isMorning = type === 'morning';
+  const lines = [];
 
-function morningPercentDetailText(task) {
-  const current = task.currentPercent === '' ? '' : `${task.currentPercent}％`;
-  const target = task.targetPercent === '' ? '' : `${task.targetPercent}％`;
-  return `（現状：${current}／目標：${target}）`;
-}
+  if (includeTitle) lines.push(isMorning ? 'Morning Report' : 'Evening Report');
+  lines.push(isMorning ? 'おはようございます。' : 'お疲れさまです.');
+  lines[lines.length - 1] = isMorning ? 'おはようございます。' : 'お疲れさまです。';
+  lines.push(
+    isMorning
+      ? `本日（${reportDateText(1)}）の業務を開始いたします。`
+      : `本日（${reportDateText(0)}）の業務を終了いたします。`
+  );
+  lines.push('');
 
-function eveningCurrentDetailText(task) {
-  const current = task.currentPercent === '' ? '' : `${task.currentPercent}％`;
-  return `（現状：${current}）`;
-}
-
-function eveningTargetDetailText(task) {
-  const target = task.targetPercent === '' ? '' : `${task.targetPercent}％`;
-  return `（目標：${target}）`;
-}
-
-function deadlineDetailText(task) {
-  const value = (task.deadline || '').trim();
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return '';
-
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (!month || !day) return '';
-
-  return `（完了予定日：${month}月${day}日）`;
-}
-
-function taskDisplayName(task) {
-  const id = task.id.trim();
-  return task.name.trim() || (id ? `CBOX-${id}` : '(Untitled task)');
-}
-
-function formatTaskPlain(task, index, detailText, includeDeadline = true) {
-  const id = task.id.trim();
-  const name = taskDisplayName(task);
-  const progress = progressText(task);
-  const deadline = includeDeadline ? deadlineDetailText(task) : '';
-
-  if (id !== '') {
-    return `${index + 1}. CBOX-${id} : ${name} ${progress} ${detailText}${deadline}`;
-  }
-
-  return `${index + 1}. ${name} ${progress} ${detailText}${deadline}`;
-}
-
-function generateMorningPlainText() {
-  // Morning reports are prepared the previous evening, so use tomorrow's Japan date.
-  const date = reportDateText(1);
-  const morningTasks = state.tasks.filter(task => task.status !== '完了');
-  const taskLines = morningTasks
-    .map((task, index) => formatTaskPlain(task, index, morningPercentDetailText(task)))
-    .join('\n');
-
-  const lines = [
-    'おはようございます。',
-    `本日（${date}）の業務を開始いたします。`,
-    '',
-    '◉ BtoB',
-    '',
-    '■ 本日のタスク',
-    taskLines,
-    ''
-  ];
-
-  if (state.requestMoreTasks) {
-    lines.push('もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。', '');
-  }
-
-  lines.push('本日もよろしくお願いいたします。');
+  pushTaskBlocks(lines);
+  lines.push('');
+  lines.push(isMorning ? '本日もよろしくお願いいたします。' : '本日もありがとうございました。');
   return lines.join('\n');
 }
 
-function generateEveningPlainText() {
-  const date = reportDateText();
-  const todayLines = state.tasks
-    .map((task, index) => formatTaskPlain(task, index, eveningCurrentDetailText(task), false))
-    .join('\n');
-
-  const nextDayTasks = state.tasks.filter(task => task.status !== '完了');
-  const nextDayLines = nextDayTasks
-    .map((task, index) => formatTaskPlain(task, index, eveningTargetDetailText(task)))
-    .join('\n');
-
-  const lines = [
-    'お疲れさまです。',
-    `本日（${date}）の業務を終了いたします。`,
-    '',
-    '◉ BtoB',
-    '',
-    '■ 今日の作業',
-    todayLines,
-    '',
-    '■ 次の日の作業',
-    nextDayLines,
-    ''
-  ];
-
-  if (state.requestMoreTasks) {
-    lines.push(
-      '本日に現在のタスクがすべて完了する予定です。',
-      'もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。',
-      ''
-    );
-  }
-
-  lines.push('本日もありがとうございました。');
-  return lines.join('\n');
-}
-
-function generatePlainText() {
-  return state.mode === 'morning' ? generateMorningPlainText() : generateEveningPlainText();
+function generateCombinedPlainText() {
+  return `${generateReportPlainText('evening')}\n\n\n${generateReportPlainText('morning')}`;
 }
 
 function appendTextLine(parent, text, className = 'message-line') {
@@ -394,95 +292,56 @@ function appendTextLine(parent, text, className = 'message-line') {
   return line;
 }
 
-function appendTaskPreviewLine(parent, task, index, detailText, includeDeadline = true) {
-  const id = task.id.trim();
-  const name = taskDisplayName(task);
+function appendTaskPreviewLine(parent, task) {
   const line = document.createElement('div');
   line.className = 'message-line';
-
-  line.append(document.createTextNode(`${index + 1}. `));
+  const id = task.id.trim();
 
   if (id) {
-    line.append(document.createTextNode(`CBOX-${id} : `));
+    line.append(document.createTextNode(`WUNDOU-${id} `));
     const link = document.createElement('a');
-    link.href = `${BACKLOG_BASE}${id}`;
+    link.href = `${BACKLOG_BASE}${encodeURIComponent(id)}`;
     link.target = '_blank';
     link.rel = 'noreferrer';
-    link.textContent = name;
+    link.textContent = taskDisplayName(task);
     line.append(link);
   } else {
-    line.append(document.createTextNode(name));
+    line.append(document.createTextNode(taskDisplayName(task)));
   }
 
-  const deadline = includeDeadline ? deadlineDetailText(task) : '';
-  line.append(document.createTextNode(` ${progressText(task)} ${detailText}${deadline}`));
+  const percent = percentText(task.statusPercent);
+  if (percent) line.append(document.createTextNode(` ${percent}`));
   parent.appendChild(line);
 }
 
-function buildMorningPreviewDom() {
-  // Morning reports are prepared the previous evening, so use tomorrow's Japan date.
-  const date = reportDateText(1);
+function appendReportPreview(parent, type) {
+  const isMorning = type === 'morning';
+  appendTextLine(parent, isMorning ? 'Morning Report' : 'Evening Report', 'message-title');
+  appendTextLine(parent, isMorning ? 'おはようございます。' : 'お疲れさまです。');
+  appendTextLine(
+    parent,
+    isMorning
+      ? `本日（${reportDateText(1)}）の業務を開始いたします。`
+      : `本日（${reportDateText(0)}）の業務を終了いたします。`
+  );
+  appendTextLine(parent, '', 'message-spacer');
 
-  appendTextLine(els.preview, 'おはようございます。');
-  appendTextLine(els.preview, `本日（${date}）の業務を開始いたします。`);
-  appendTextLine(els.preview, '', 'message-spacer');
-  appendTextLine(els.preview, '◉ BtoB');
-  appendTextLine(els.preview, '', 'message-spacer');
-  appendTextLine(els.preview, '■ 本日のタスク');
-
-  state.tasks
-    .filter(task => task.status !== '完了')
-    .forEach((task, index) => {
-      appendTaskPreviewLine(els.preview, task, index, morningPercentDetailText(task));
-    });
-
-  appendTextLine(els.preview, '', 'message-spacer');
-  if (state.requestMoreTasks) {
-    appendTextLine(els.preview, 'もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。');
-    appendTextLine(els.preview, '', 'message-spacer');
-  }
-  appendTextLine(els.preview, '本日もよろしくお願いいたします。');
-}
-
-function buildEveningPreviewDom() {
-  const date = reportDateText();
-
-  appendTextLine(els.preview, 'お疲れさまです。');
-  appendTextLine(els.preview, `本日（${date}）の業務を終了いたします。`);
-  appendTextLine(els.preview, '', 'message-spacer');
-  appendTextLine(els.preview, '◉ BtoB');
-  appendTextLine(els.preview, '', 'message-spacer');
-  appendTextLine(els.preview, '■ 今日の作業');
-
-  state.tasks.forEach((task, index) => {
-    appendTaskPreviewLine(els.preview, task, index, eveningCurrentDetailText(task), false);
+  ASSIGNEES.forEach((assignee, assigneeIndex) => {
+    appendTextLine(parent, `------------------${assignee.toUpperCase()}----------------------`, 'message-divider');
+    reportTasks(assignee).forEach(task => appendTaskPreviewLine(parent, task));
+    if (assigneeIndex < ASSIGNEES.length - 1) appendTextLine(parent, '', 'message-spacer');
   });
 
-  appendTextLine(els.preview, '', 'message-spacer');
-  appendTextLine(els.preview, '■ 次の日の作業');
-
-  state.tasks
-    .filter(task => task.status !== '完了')
-    .forEach((task, index) => {
-      appendTaskPreviewLine(els.preview, task, index, eveningTargetDetailText(task));
-    });
-
-  appendTextLine(els.preview, '', 'message-spacer');
-  if (state.requestMoreTasks) {
-    appendTextLine(els.preview, '本日に現在のタスクがすべて完了する予定です。');
-    appendTextLine(els.preview, 'もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。');
-    appendTextLine(els.preview, '', 'message-spacer');
-  }
-  appendTextLine(els.preview, '本日もありがとうございました。');
+  appendTextLine(parent, '', 'message-spacer');
+  appendTextLine(parent, isMorning ? '本日もよろしくお願いいたします。' : '本日もありがとうございました。');
 }
 
-function buildPreviewDom() {
-  els.preview.innerHTML = '';
-  if (state.mode === 'morning') {
-    buildMorningPreviewDom();
-  } else {
-    buildEveningPreviewDom();
-  }
+function buildCombinedPreview() {
+  els.combinedPreview.innerHTML = '';
+  appendReportPreview(els.combinedPreview, 'evening');
+  appendTextLine(els.combinedPreview, '', 'message-report-gap');
+  appendTextLine(els.combinedPreview, '', 'message-report-gap');
+  appendReportPreview(els.combinedPreview, 'morning');
 }
 
 function escapeHtml(value) {
@@ -494,105 +353,54 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-function taskClipboardHtml(task, index, detailText, includeDeadline = true) {
+function taskClipboardHtml(task) {
   const id = task.id.trim();
   const name = escapeHtml(taskDisplayName(task));
-  const progress = escapeHtml(progressText(task));
-  const detail = escapeHtml(detailText);
-  const deadline = includeDeadline ? escapeHtml(deadlineDetailText(task)) : '';
+  const percent = percentText(task.statusPercent);
+  const percentHtml = percent ? ` ${escapeHtml(percent)}` : '';
 
   if (id) {
     const url = `${BACKLOG_BASE}${encodeURIComponent(id)}`;
-    return `<div>${index + 1}. CBOX-${escapeHtml(id)} : <a href="${url}">${name}</a> ${progress} ${detail}${deadline}</div>`;
+    return `<div>WUNDOU-${escapeHtml(id)} <a href="${url}">${name}</a>${percentHtml}</div>`;
   }
 
-  return `<div>${index + 1}. ${name} ${progress} ${detail}${deadline}</div>`;
+  return `<div>${name}${percentHtml}</div>`;
 }
 
-function generateMorningClipboardHtml() {
-  // Morning reports are prepared the previous evening, so use tomorrow's Japan date.
-  const date = reportDateText(1);
-  const taskHtml = state.tasks
-    .filter(task => task.status !== '完了')
-    .map((task, index) => taskClipboardHtml(task, index, morningPercentDetailText(task)))
-    .join('');
+function generateReportClipboardHtml(type) {
+  const isMorning = type === 'morning';
+  const html = ['<div>'];
+  html.push(`<div><strong>${isMorning ? 'Morning Report' : 'Evening Report'}</strong></div>`);
+  html.push(`<div>${isMorning ? 'おはようございます。' : 'お疲れさまです。'}</div>`);
+  html.push(`<div>${isMorning
+    ? `本日（${reportDateText(1)}）の業務を開始いたします。`
+    : `本日（${reportDateText(0)}）の業務を終了いたします。`}</div>`);
+  html.push('<div><br></div>');
 
-  const html = [
-    '<div>',
-    '<div>おはようございます。</div>',
-    `<div>本日（${escapeHtml(date)}）の業務を開始いたします。</div>`,
-    '<div><br></div>',
-    '<div>◉ BtoB</div>',
-    '<div><br></div>',
-    '<div>■ 本日のタスク</div>',
-    taskHtml,
-    '<div><br></div>'
-  ];
+  ASSIGNEES.forEach((assignee, assigneeIndex) => {
+    html.push(`<div>------------------${escapeHtml(assignee.toUpperCase())}----------------------</div>`);
+    reportTasks(assignee).forEach(task => html.push(taskClipboardHtml(task)));
+    if (assigneeIndex < ASSIGNEES.length - 1) html.push('<div><br></div>');
+  });
 
-  if (state.requestMoreTasks) {
-    html.push(
-      '<div>もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。</div>',
-      '<div><br></div>'
-    );
-  }
-
-  html.push('<div>本日もよろしくお願いいたします。</div>', '</div>');
+  html.push('<div><br></div>');
+  html.push(`<div>${isMorning ? '本日もよろしくお願いいたします。' : '本日もありがとうございました。'}</div>`);
+  html.push('</div>');
   return html.join('');
 }
 
-function generateEveningClipboardHtml() {
-  const date = reportDateText();
-  const todayHtml = state.tasks
-    .map((task, index) => taskClipboardHtml(task, index, eveningCurrentDetailText(task), false))
-    .join('');
-
-  const nextDayHtml = state.tasks
-    .filter(task => task.status !== '完了')
-    .map((task, index) => taskClipboardHtml(task, index, eveningTargetDetailText(task)))
-    .join('');
-
-  const html = [
-    '<div>',
-    '<div>お疲れさまです。</div>',
-    `<div>本日（${escapeHtml(date)}）の業務を終了いたします。</div>`,
-    '<div><br></div>',
-    '<div>◉ BtoB</div>',
-    '<div><br></div>',
-    '<div>■ 今日の作業</div>',
-    todayHtml,
-    '<div><br></div>',
-    '<div>■ 次の日の作業</div>',
-    nextDayHtml,
-    '<div><br></div>'
-  ];
-
-  if (state.requestMoreTasks) {
-    html.push(
-      '<div>本日に現在のタスクがすべて完了する予定です。</div>',
-      '<div>もし追加でご依頼いただけるタスクがございましたら、ご登録いただけますでしょうか。</div>',
-      '<div><br></div>'
-    );
-  }
-
-  html.push('<div>本日もありがとうございました。</div>', '</div>');
-  return html.join('');
+function generateCombinedClipboardHtml() {
+  return `<div>${generateReportClipboardHtml('evening')}<div><br></div><div><br></div>${generateReportClipboardHtml('morning')}</div>`;
 }
 
-function generateClipboardHtml() {
-  return state.mode === 'morning' ? generateMorningClipboardHtml() : generateEveningClipboardHtml();
+function updatePreviews() {
+  if (state.tab !== 'report') return;
+  buildCombinedPreview();
 }
 
-function updatePreview() {
-  els.dateLabel.textContent = humanDateText();
-  if (state.tab !== 'tasks') {
-    els.reportHeading.textContent = state.mode === 'morning' ? 'Morning message' : 'Evening message';
-    buildPreviewDom();
-  }
-}
-
-async function copyMessage() {
-  const plainText = generatePlainText();
-  const html = generateClipboardHtml();
+async function copyAllReports() {
+  const plainText = generateCombinedPlainText();
+  const html = generateCombinedClipboardHtml();
 
   try {
     if (window.ClipboardItem && navigator.clipboard?.write) {
@@ -601,12 +409,12 @@ async function copyMessage() {
         'text/html': new Blob([html], { type: 'text/html' })
       });
       await navigator.clipboard.write([clipboardItem]);
-      showToast('Copied with Slack links');
+      showToast('Evening + Morning reports copied with Backlog links');
       return;
     }
 
     await navigator.clipboard.writeText(plainText);
-    showToast('Copied (plain text fallback)');
+    showToast('Both reports copied (plain text fallback)');
   } catch (error) {
     try {
       const temp = document.createElement('textarea');
@@ -618,7 +426,7 @@ async function copyMessage() {
       temp.select();
       document.execCommand('copy');
       temp.remove();
-      showToast('Copied (plain text fallback)');
+      showToast('Both reports copied (plain text fallback)');
     } catch (fallbackError) {
       showToast('Copy failed');
     }
@@ -636,17 +444,12 @@ function showToast(message) {
 function render() {
   renderTabs();
   renderTasks();
-  updatePreview();
+  updatePreviews();
 }
 
 els.tasksTabBtn.addEventListener('click', () => setTab('tasks'));
-els.morningBtn.addEventListener('click', () => setTab('morning'));
-els.eveningBtn.addEventListener('click', () => setTab('evening'));
+els.reportTabBtn.addEventListener('click', () => setTab('report'));
 els.addTaskBtn.addEventListener('click', addTask);
-els.requestMoreTasks.addEventListener('change', () => {
-  state.requestMoreTasks = els.requestMoreTasks.checked;
-  changed();
-});
-els.copyBtn.addEventListener('click', copyMessage);
+els.copyAllBtn.addEventListener('click', copyAllReports);
 
 loadState();

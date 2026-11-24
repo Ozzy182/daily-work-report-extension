@@ -10,14 +10,13 @@
   <main class="app">
     <header class="topbar">
       <div>
-        <h1>Daily Work Report</h1>
-        <p id="dateLabel" class="date-label"></p>
+        <h1>WUNDOU Work Report</h1>
+        <p class="subtitle">WUNDOU task tracking</p>
       </div>
 
-      <nav class="main-tabs" role="tablist" aria-label="Daily report tabs">
+      <nav class="main-tabs" role="tablist" aria-label="Work report tabs">
         <button id="tasksTabBtn" class="tab-btn active" type="button" role="tab" aria-selected="true">▣ Tasks</button>
-        <button id="morningBtn" class="tab-btn" type="button" role="tab" aria-selected="false">☀ Morning</button>
-        <button id="eveningBtn" class="tab-btn" type="button" role="tab" aria-selected="false">🌙 Evening</button>
+        <button id="reportTabBtn" class="tab-btn" type="button" role="tab" aria-selected="false">▤ Report</button>
       </nav>
     </header>
 
@@ -25,30 +24,29 @@
       <div class="section-heading">
         <div>
           <h2>Tasks</h2>
-          <p>Drag the handle to reorder. Changes are saved automatically.</p>
+          <p>All tasks stay in one list. Use Assignee to choose Bibek or Nurbu.</p>
         </div>
-        <div class="task-actions">
-          <label class="request-more-toggle">
-            <input id="requestMoreTasks" type="checkbox" />
-            <span>Request for more task</span>
-          </label>
-          <button id="addTaskBtn" class="primary small" type="button">+ Add task</button>
-        </div>
+        <button id="addTaskBtn" class="primary small" type="button">+ Add task</button>
       </div>
 
-      <section id="taskList" class="task-list" aria-live="polite"></section>
+      <div id="taskList" class="task-list" aria-live="polite"></div>
     </section>
 
     <section id="reportView" class="view" role="tabpanel">
       <div class="section-heading report-heading">
         <div>
-          <h2 id="reportHeading">Morning message</h2>
-          <p>Slack-ready preview. Task-name links remain clickable when pasted.</p>
+          <h2>Report</h2>
+          <p>Evening uses today's Japan date. Morning automatically uses the next day.</p>
         </div>
-        <button id="copyBtn" class="copy-btn" type="button">Copy message</button>
       </div>
 
-      <div id="preview" class="message-preview" tabindex="0" aria-label="Message preview"></div>
+      <div class="report-block">
+        <div class="report-block-heading">
+          <h3>Evening + Morning report</h3>
+          <button id="copyAllBtn" class="copy-btn" type="button">Copy all</button>
+        </div>
+        <div id="combinedPreview" class="message-preview combined-preview" tabindex="0" aria-label="Combined evening and morning report preview"></div>
+      </div>
     </section>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -58,11 +56,19 @@
     <article class="task-card">
       <span class="drag-handle" draggable="true" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span>
 
+      <label class="field assignee-field">
+        <span>Assignee</span>
+        <select class="task-assignee">
+          <option value="Bibek">Bibek</option>
+          <option value="Nurbu">Nurbu</option>
+        </select>
+      </label>
+
       <label class="field id-field">
         <span>ID</span>
         <div class="id-input-wrap">
-          <span>CBOX-</span>
-          <input class="task-id" type="number" min="0" step="1" inputmode="numeric" placeholder="75" />
+          <span>WUNDOU-</span>
+          <input class="task-id" type="number" min="0" step="1" inputmode="numeric" placeholder="67" />
         </div>
       </label>
 
@@ -71,36 +77,12 @@
         <input class="task-name" type="text" placeholder="Task name" />
       </label>
 
-      <label class="field status-field">
-        <span>Progress</span>
-        <select class="task-status">
-          <option value="未着手">Not Started</option>
-          <option value="進行中" selected>In Progress</option>
-          <option value="保留">On Hold</option>
-          <option value="返答待ち">Response Waiting</option>
-          <option value="完了">Complete</option>
-        </select>
-      </label>
-
-      <label class="field current-percent-field">
-        <span>Current %</span>
+      <label class="field status-percent-field">
+        <span>Status %</span>
         <div class="percent-input-wrap">
-          <input class="task-current-percent" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="" />
+          <input class="task-status-percent" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="" />
           <span>%</span>
         </div>
-      </label>
-
-      <label class="field target-percent-field">
-        <span>Target %</span>
-        <div class="percent-input-wrap">
-          <input class="task-target-percent" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="" />
-          <span>%</span>
-        </div>
-      </label>
-
-      <label class="field deadline-field">
-        <span>Deadline</span>
-        <input class="task-deadline" type="date" />
       </label>
 
       <input class="task-note" type="text" placeholder="Note" aria-label="Task note" />
