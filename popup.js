@@ -223,8 +223,12 @@ function taskLine(task) {
   return `${prefix}${taskDisplayName(task)}${percent ? ` ${percent}` : ''}`;
 }
 
-function reportTasks(assignee) {
-  return state.tasks.filter(task => task.assignee === assignee);
+function reportTasks(assignee, type = 'evening') {
+  return state.tasks.filter(task => {
+    if (task.assignee !== assignee) return false;
+    if (type === 'morning' && Number(task.statusPercent) === 100) return false;
+    return true;
+  });
 }
 
 function japanDateParts(offsetDays = 0) {
@@ -252,10 +256,10 @@ function reportDateText(offsetDays = 0) {
   return `${month}月${day}日`;
 }
 
-function pushTaskBlocks(lines) {
+function pushTaskBlocks(lines, type = 'evening') {
   ASSIGNEES.forEach((assignee, assigneeIndex) => {
     lines.push(`------------------${assignee.toUpperCase()}----------------------`);
-    reportTasks(assignee).forEach(task => lines.push(taskLine(task)));
+    reportTasks(assignee, type).forEach(task => lines.push(taskLine(task)));
     if (assigneeIndex < ASSIGNEES.length - 1) lines.push('');
   });
 }
@@ -274,7 +278,7 @@ function generateReportPlainText(type, includeTitle = true) {
   );
   lines.push('');
 
-  pushTaskBlocks(lines);
+  pushTaskBlocks(lines, type);
   lines.push('');
   lines.push(isMorning ? '本日もよろしくお願いいたします。' : '本日もありがとうございました。');
   return lines.join('\n');
@@ -328,7 +332,7 @@ function appendReportPreview(parent, type) {
 
   ASSIGNEES.forEach((assignee, assigneeIndex) => {
     appendTextLine(parent, `------------------${assignee.toUpperCase()}----------------------`, 'message-divider');
-    reportTasks(assignee).forEach(task => appendTaskPreviewLine(parent, task));
+    reportTasks(assignee, type).forEach(task => appendTaskPreviewLine(parent, task));
     if (assigneeIndex < ASSIGNEES.length - 1) appendTextLine(parent, '', 'message-spacer');
   });
 
@@ -379,7 +383,7 @@ function generateReportClipboardHtml(type) {
 
   ASSIGNEES.forEach((assignee, assigneeIndex) => {
     html.push(`<div>------------------${escapeHtml(assignee.toUpperCase())}----------------------</div>`);
-    reportTasks(assignee).forEach(task => html.push(taskClipboardHtml(task)));
+    reportTasks(assignee, type).forEach(task => html.push(taskClipboardHtml(task)));
     if (assigneeIndex < ASSIGNEES.length - 1) html.push('<div><br></div>');
   });
 

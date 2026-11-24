@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WUNDOU Work Report Generator",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Manage WUNDOU tasks by assignee and copy combined dated evening and next-morning status reports.",
   "permissions": [
     "storage",
